@@ -1,0 +1,18 @@
+{
+  "folders": [
+    {
+      "name": "sable-web",
+      "path": "."
+    },
+    {
+      "name": "sable-api",
+      "path": "../sable-api"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.next": true,
+      "**/__pycache__": true
+    }
+  }
+}
