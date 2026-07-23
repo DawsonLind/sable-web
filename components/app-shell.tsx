@@ -13,7 +13,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div>
             <p className="text-base font-semibold tracking-tight">Sable</p>
-            <p className="text-xs text-white/45">Sales workspace</p>
+            <p className="text-xs text-white/45">
+              Pipeline clarity for modern sales teams
+            </p>
           </div>
         </div>
         <div className="mt-9">

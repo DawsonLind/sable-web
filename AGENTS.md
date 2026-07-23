@@ -18,7 +18,7 @@
 - `closed_won`
 - `closed_lost`
 
-Keep API response schemas aligned with `../sable-api/.audit/api-contract.md`.
+Keep API response schemas aligned with the sibling `sable-api` routers and its `AGENTS.md`.
 
 ## Change discipline
 

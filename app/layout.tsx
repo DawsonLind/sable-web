@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     default: "Sable CRM",
     template: "%s | Sable CRM",
   },
-  description: "A focused sales workspace for growing B2B teams.",
+  description: "Pipeline clarity for modern sales teams.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
