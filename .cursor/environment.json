@@ -1,0 +1,14 @@
+{
+  "name": "Sable Web",
+  "install": "pnpm install && if [ ! -d ../sable-api ]; then git clone https://github.com/DawsonLind/sable-api.git ../sable-api; fi",
+  "start": "pnpm dev",
+  "repositoryDependencies": [
+    "github.com/DawsonLind/sable-api"
+  ],
+  "ports": [
+    {
+      "name": "Sable Web",
+      "port": 3000
+    }
+  ]
+}

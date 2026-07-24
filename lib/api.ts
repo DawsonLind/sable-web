@@ -1,80 +1,56 @@
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { z, type ZodType } from "zod";
 
-export type LeadStatus = "new" | "contacted" | "qualified" | "won" | "lost";
+import {
+  accountSchema,
+  activitySchema,
+  contactSchema,
+  dealSchema,
+  type Account,
+  type Activity,
+  type Contact,
+  type Deal,
+  type DealStage,
+} from "@/lib/domain";
 
-export interface Lead {
-  id: number;
-  name: string;
-  company: string;
-  email: string;
-  status: LeadStatus;
-  value: number;
-  notes: string;
-  created_at: string;
-  updated_at: string;
-}
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+  "http://localhost:8000";
 
-export interface LeadCreate {
-  name: string;
-  company: string;
-  email: string;
-  status: LeadStatus;
-  value: number;
-  notes: string;
-}
+async function request<T>(path: string, schema: ZodType<T>): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+    },
+  });
 
-export interface PipelineStats {
-  total_leads: number;
-  total_pipeline_value: number;
-  won_value: number;
-  by_status: Record<LeadStatus, number>;
-}
-
-async function handle<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+  if (!response.ok) {
+    throw new Error(`Sable API request failed with status ${response.status}.`);
   }
-  return res.json() as Promise<T>;
+
+  const payload: unknown = await response.json();
+  return schema.parse(payload);
 }
 
-export async function fetchLeads(): Promise<Lead[]> {
-  return handle<Lead[]>(await fetch(`${API_URL}/leads`, { cache: "no-store" }));
+export function getAccounts(): Promise<Account[]> {
+  return request("/accounts", z.array(accountSchema));
 }
 
-export async function fetchStats(): Promise<PipelineStats> {
-  return handle<PipelineStats>(
-    await fetch(`${API_URL}/stats`, { cache: "no-store" }),
-  );
+export function getAccount(accountId: number): Promise<Account> {
+  return request(`/accounts/${accountId}`, accountSchema);
 }
 
-export async function createLead(payload: LeadCreate): Promise<Lead> {
-  return handle<Lead>(
-    await fetch(`${API_URL}/leads`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
-  );
+export function getContacts(accountId?: number): Promise<Contact[]> {
+  const query = accountId === undefined ? "" : `?account_id=${accountId}`;
+  return request(`/contacts${query}`, z.array(contactSchema));
 }
 
-export async function updateLead(
-  id: number,
-  payload: Partial<LeadCreate>,
-): Promise<Lead> {
-  return handle<Lead>(
-    await fetch(`${API_URL}/leads/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
-  );
+export function getDeals(stage?: DealStage): Promise<Deal[]> {
+  const query = stage === undefined ? "" : `?stage=${stage}`;
+  return request(`/deals${query}`, z.array(dealSchema));
 }
 
-export async function deleteLead(id: number): Promise<void> {
-  const res = await fetch(`${API_URL}/leads/${id}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 204) {
-    throw new Error(`API ${res.status}: ${res.statusText}`);
-  }
+export function getActivities(accountId?: number): Promise<Activity[]> {
+  const query = accountId === undefined ? "" : `?account_id=${accountId}`;
+  return request(`/activities${query}`, z.array(activitySchema));
 }
