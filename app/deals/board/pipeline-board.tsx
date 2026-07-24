@@ -5,6 +5,7 @@ import {
   type DragEvent,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -76,6 +77,7 @@ export default function PipelineBoard({
     stage: DealStage;
   } | null>(null);
   const [dropTarget, setDropTarget] = useState<DealStage | null>(null);
+  const dragCompletedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -182,6 +184,22 @@ export default function PipelineBoard({
     [board, pendingDealIds, transport],
   );
 
+  const completeDrag = useCallback(
+    (dealId: number, targetStage: DealStage | null) => {
+      if (dragCompletedRef.current) {
+        return;
+      }
+
+      dragCompletedRef.current = true;
+      setDraggedDeal(null);
+      setDropTarget(null);
+      if (targetStage) {
+        void moveDeal(dealId, targetStage);
+      }
+    },
+    [moveDeal],
+  );
+
   function changeStage(
     dealId: number,
     event: ChangeEvent<HTMLSelectElement>,
@@ -199,6 +217,7 @@ export default function PipelineBoard({
   ) {
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", String(dealId));
+    dragCompletedRef.current = false;
     setDraggedDeal({ id: dealId, stage });
   }
 
@@ -211,12 +230,21 @@ export default function PipelineBoard({
     setDropTarget(stage);
   }
 
+  function leaveColumn(event: DragEvent<HTMLElement>) {
+    const relatedTarget = event.relatedTarget;
+    if (
+      relatedTarget instanceof Node &&
+      event.currentTarget.contains(relatedTarget)
+    ) {
+      return;
+    }
+    setDropTarget(null);
+  }
+
   function dropDeal(event: DragEvent<HTMLElement>, stage: DealStage) {
     event.preventDefault();
-    setDropTarget(null);
     if (draggedDeal) {
-      void moveDeal(draggedDeal.id, stage);
-      setDraggedDeal(null);
+      completeDrag(draggedDeal.id, stage);
     }
   }
 
@@ -260,11 +288,12 @@ export default function PipelineBoard({
                 className={`pipeline-column${
                   isDropTarget ? " pipeline-column--drop-target" : ""
                 }`}
+                data-stage={value}
                 data-testid={`pipeline-column-${value}`}
                 key={value}
                 aria-label={`${label} stage`}
                 onDragOver={(event) => dragOver(event, value)}
-                onDragLeave={() => setDropTarget(null)}
+                onDragLeave={leaveColumn}
                 onDrop={(event) => dropDeal(event, value)}
               >
                 <div className="pipeline-column__header">
@@ -289,9 +318,20 @@ export default function PipelineBoard({
                           onDragStart={(event) =>
                             startDrag(event, deal.id, deal.stage)
                           }
-                          onDragEnd={() => {
-                            setDraggedDeal(null);
-                            setDropTarget(null);
+                          onDragEnd={(event) => {
+                            const pointerTarget = document.elementFromPoint(
+                              event.clientX,
+                              event.clientY,
+                            );
+                            const pointerStageValue = pointerTarget
+                              ?.closest<HTMLElement>("[data-stage]")
+                              ?.getAttribute("data-stage");
+                            const pointerStage =
+                              pointerStageValue &&
+                              isDealStage(pointerStageValue)
+                                ? pointerStageValue
+                                : null;
+                            completeDrag(deal.id, pointerStage);
                           }}
                         >
                           <div className="pipeline-card__topline">
