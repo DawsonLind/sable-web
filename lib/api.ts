@@ -1,6 +1,21 @@
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export const DEAL_STAGES = [
+  { value: "prospecting", label: "Prospecting" },
+  { value: "qualified", label: "Qualified" },
+  { value: "proposal", label: "Proposal" },
+  { value: "negotiation", label: "Negotiation" },
+  { value: "closed_won", label: "Closed Won" },
+  { value: "closed_lost", label: "Closed Lost" },
+] as const;
+
+export type DealStage = (typeof DEAL_STAGES)[number]["value"];
+
+export function isDealStage(value: string): value is DealStage {
+  return DEAL_STAGES.some((stage) => stage.value === value);
+}
+
 export type LeadStatus = "new" | "contacted" | "qualified" | "won" | "lost";
 
 export interface Lead {
@@ -31,6 +46,35 @@ export interface PipelineStats {
   by_status: Record<LeadStatus, number>;
 }
 
+export interface DealRead {
+  id: number;
+  account_id: number;
+  name: string;
+  amount: number;
+  stage: DealStage;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DealBoardDealRead extends DealRead {
+  account_name: string;
+}
+
+export interface DealBoardColumnRead {
+  stage: DealStage;
+  deals: DealBoardDealRead[];
+}
+
+export interface DealBoardRead {
+  columns: DealBoardColumnRead[];
+}
+
+export interface DemoUser {
+  sub: string;
+  name: string;
+  email: string;
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const text = await res.text();
@@ -46,6 +90,18 @@ export async function fetchLeads(): Promise<Lead[]> {
 export async function fetchStats(): Promise<PipelineStats> {
   return handle<PipelineStats>(
     await fetch(`${API_URL}/stats`, { cache: "no-store" }),
+  );
+}
+
+export async function fetchDealBoard(): Promise<DealBoardRead> {
+  return handle<DealBoardRead>(
+    await fetch(`${API_URL}/deals/board`, { cache: "no-store" }),
+  );
+}
+
+export async function fetchCurrentUser(): Promise<DemoUser> {
+  return handle<DemoUser>(
+    await fetch(`${API_URL}/auth/me`, { cache: "no-store" }),
   );
 }
 
@@ -68,6 +124,19 @@ export async function updateLead(
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+    }),
+  );
+}
+
+export async function updateDealStage(
+  dealId: number,
+  stage: DealStage,
+): Promise<DealRead> {
+  return handle<DealRead>(
+    await fetch(`${API_URL}/deals/${dealId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage }),
     }),
   );
 }
