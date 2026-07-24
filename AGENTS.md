@@ -1,24 +1,39 @@
-# AGENTS.md - sable-web
+# Sable web agent guide
 
-Next.js (App Router) + TypeScript frontend for **Sable**, a lightweight B2B
-sales CRM. Talks to the `sable-api` backend.
+## Runtime
 
-## Layout
+- Use pnpm.
+- Run the Next.js frontend on port `3000`.
+- The sibling API lives at `../sable-api` and runs on port `8000`.
+- Set `NEXT_PUBLIC_API_URL` only when the API is not at `http://localhost:8000`.
 
-- `app/page.tsx` - server component shell for the dashboard page.
-- `app/dashboard.tsx` - client component: lead list, pipeline stats, create/delete.
-- `app/globals.css` - all styling (plain global CSS, no Tailwind).
-- `lib/api.ts` - typed fetch client for the API; reads `NEXT_PUBLIC_API_URL`.
+## Domain contract
 
-Standard scripts (`dev`, `build`, `lint`, `typecheck`) are in `package.json`.
+`DealStage` has exactly these values:
 
-## Cursor Cloud specific instructions
+- `prospecting`
+- `qualified`
+- `proposal`
+- `negotiation`
+- `closed_won`
+- `closed_lost`
 
-- The frontend needs `sable-api` running on `:8000`. Start the dev server with
-  the API base URL set: `NEXT_PUBLIC_API_URL=http://localhost:8000 pnpm dev`
-  (defaults to `http://localhost:8000` if unset).
-- `NEXT_PUBLIC_API_URL` is inlined at build/start time and fetches run in the
-  browser, so the API's CORS config must allow the web origin (`:3000`).
-- `pnpm install` reports an ignored build script for `unrs-resolver`; this is
-  safe to ignore - lint, typecheck, and build all pass without approving it.
-- Use `pnpm` (declared via `packageManager`); a `pnpm-lock.yaml` is committed.
+Keep API response schemas aligned with the sibling `sable-api` routers and its `AGENTS.md`.
+
+## Change discipline
+
+Prefer the smallest change that satisfies the locked contract. Keep data fetching in server components unless browser state is required. Do not add a Kanban board, real OAuth, deployment configuration, or intentional demo bugs.
+
+## Verification
+
+Verify changes with the real API and rendered application:
+
+```bash
+pnpm test
+pnpm lint
+pnpm build
+pnpm dev
+curl http://localhost:8000/health
+curl http://localhost:3000/accounts
+curl http://localhost:3000/deals
+```
