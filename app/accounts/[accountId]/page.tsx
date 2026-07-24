@@ -9,6 +9,22 @@ interface AccountPageProps {
   };
 }
 
+function safeWebsiteUrl(website: string | null): string | null {
+  if (website === null) {
+    return null;
+  }
+
+  try {
+    const url = new URL(website);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
 export default async function AccountPage({ params }: AccountPageProps) {
   const accountId = Number(params.accountId);
   if (!Number.isInteger(accountId) || accountId < 1) {
@@ -22,6 +38,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
   if (account === null) {
     notFound();
   }
+  const websiteUrl = safeWebsiteUrl(account.website);
 
   return (
     <>
@@ -31,11 +48,11 @@ export default async function AccountPage({ params }: AccountPageProps) {
           <h1>{account.name}</h1>
           <p>{account.industry ?? "Industry not set"}</p>
         </div>
-        {account.website ? (
+        {websiteUrl ? (
           <a
             className="secondary-link"
-            href={account.website}
-            rel="noreferrer"
+            href={websiteUrl}
+            rel="noopener noreferrer"
             target="_blank"
           >
             Visit website
