@@ -1,80 +1,101 @@
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export type LeadStatus = "new" | "contacted" | "qualified" | "won" | "lost";
-
-export interface Lead {
+export interface Account {
   id: number;
   name: string;
-  company: string;
-  email: string;
-  status: LeadStatus;
-  value: number;
-  notes: string;
+  industry: string | null;
+  website: string | null;
   created_at: string;
-  updated_at: string;
 }
 
-export interface LeadCreate {
-  name: string;
-  company: string;
-  email: string;
-  status: LeadStatus;
-  value: number;
-  notes: string;
+export interface Contact {
+  id: number;
+  account_id: number;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  title: string | null;
+  created_at: string;
 }
 
-export interface PipelineStats {
-  total_leads: number;
-  total_pipeline_value: number;
-  won_value: number;
-  by_status: Record<LeadStatus, number>;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
-async function handle<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+function isNullableString(value: unknown): value is string | null {
+  return typeof value === "string" || value === null;
+}
+
+function isAccount(value: unknown): value is Account {
+  return (
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    typeof value.name === "string" &&
+    isNullableString(value.industry) &&
+    isNullableString(value.website) &&
+    typeof value.created_at === "string"
+  );
+}
+
+function isContact(value: unknown): value is Contact {
+  return (
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    typeof value.account_id === "number" &&
+    typeof value.first_name === "string" &&
+    typeof value.last_name === "string" &&
+    isNullableString(value.email) &&
+    isNullableString(value.title) &&
+    typeof value.created_at === "string"
+  );
+}
+
+async function fetchJson(path: string): Promise<unknown> {
+  const response = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API ${response.status}: ${text || response.statusText}`);
   }
-  return res.json() as Promise<T>;
+  const body: unknown = await response.json();
+  return body;
 }
 
-export async function fetchLeads(): Promise<Lead[]> {
-  return handle<Lead[]>(await fetch(`${API_URL}/leads`, { cache: "no-store" }));
-}
-
-export async function fetchStats(): Promise<PipelineStats> {
-  return handle<PipelineStats>(
-    await fetch(`${API_URL}/stats`, { cache: "no-store" }),
-  );
-}
-
-export async function createLead(payload: LeadCreate): Promise<Lead> {
-  return handle<Lead>(
-    await fetch(`${API_URL}/leads`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
-  );
-}
-
-export async function updateLead(
-  id: number,
-  payload: Partial<LeadCreate>,
-): Promise<Lead> {
-  return handle<Lead>(
-    await fetch(`${API_URL}/leads/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
-  );
-}
-
-export async function deleteLead(id: number): Promise<void> {
-  const res = await fetch(`${API_URL}/leads/${id}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 204) {
-    throw new Error(`API ${res.status}: ${res.statusText}`);
+function parseList<T>(
+  value: unknown,
+  isItem: (item: unknown) => item is T,
+  label: string,
+): T[] {
+  if (!Array.isArray(value) || !value.every(isItem)) {
+    throw new Error(`API returned invalid ${label} data`);
   }
+  return value;
+}
+
+export async function fetchAccounts(): Promise<Account[]> {
+  return parseList(await fetchJson("/accounts"), isAccount, "account");
+}
+
+export async function fetchAccount(id: number): Promise<Account | null> {
+  const response = await fetch(`${API_URL}/accounts/${id}`, {
+    cache: "no-store",
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API ${response.status}: ${text || response.statusText}`);
+  }
+
+  const body: unknown = await response.json();
+  if (!isAccount(body)) {
+    throw new Error("API returned invalid account data");
+  }
+  return body;
+}
+
+export async function fetchContacts(accountId?: number): Promise<Contact[]> {
+  const query = accountId === undefined ? "" : `?account_id=${accountId}`;
+  return parseList(await fetchJson(`/contacts${query}`), isContact, "contact");
 }
